@@ -1,0 +1,15 @@
+git switch feature/cloudinary
+git status
+npm run build:all
+git add .
+git commit -m "feat: integrar carga de imagenes con Cloudinary"
+git push -u origin feature/cloudinary
+
+git switch main
+git pull --ff-only origin main
+
+git merge --no-ff --no-commit feature/cloudinary
+npm run build:all
+git commit -m "merge: integrar Cloudinary en main"
+
+git push origin main

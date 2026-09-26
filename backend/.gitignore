@@ -1,0 +1,4 @@
+NODE_MODULES/
+dist/
+.env
+*.log

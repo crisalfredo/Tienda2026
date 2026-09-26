@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: urbano-sv-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: urbano_sv
+      POSTGRES_USER: urbano
+      POSTGRES_PASSWORD: urbano_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - urbano_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U urbano -d urbano_sv"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  urbano_postgres_data:
