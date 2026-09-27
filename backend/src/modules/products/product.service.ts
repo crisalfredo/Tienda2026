@@ -10,42 +10,122 @@ export async function writeProductRelations(
   skuBase: string,
   input: ProductInput,
 ) {
-  const existingVariants = await transaction.productVariant.findMany({ where: { productId } })
-  const existingById = new Map(existingVariants.map((variant) => [variant.id, variant]))
+  const existingVariants = await transaction.productVariant.findMany({
+    where: { productId },
+  })
 
-  // Rebuild selectable options while keeping variant and order identities stable.
-  await transaction.variantOptionValue.deleteMany({ where: { variant: { productId } } })
-  await transaction.optionValue.deleteMany({ where: { option: { productId } } })
-  await transaction.productOption.deleteMany({ where: { productId } })
+  const existingById = new Map(
+    existingVariants.map((variant) => [variant.id, variant]),
+  )
+
+  const existingBySku = new Map(
+    existingVariants.map((variant) => [variant.sku, variant]),
+  )
+
+  /*
+   * Las opciones se reconstruyen porque pueden haber cambiado.
+   * Los productos, variantes y pedidos mantienen sus identificadores.
+   */
+  await transaction.variantOptionValue.deleteMany({
+    where: {
+      variant: {
+        productId,
+      },
+    },
+  })
+
+  await transaction.optionValue.deleteMany({
+    where: {
+      option: {
+        productId,
+      },
+    },
+  })
+
+  await transaction.productOption.deleteMany({
+    where: {
+      productId,
+    },
+  })
 
   const optionValueIds = new Map<string, string>()
+
   for (const [optionIndex, option] of input.options.entries()) {
     const createdOption = await transaction.productOption.create({
-      data: { productId, name: option.name, sortOrder: optionIndex },
+      data: {
+        productId,
+        name: option.name,
+        sortOrder: optionIndex,
+      },
     })
+
     for (const [valueIndex, value] of option.values.entries()) {
       const createdValue = await transaction.optionValue.create({
-        data: { optionId: createdOption.id, value, sortOrder: valueIndex },
+        data: {
+          optionId: createdOption.id,
+          value,
+          sortOrder: valueIndex,
+        },
       })
-      optionValueIds.set(`${option.name}\u0000${value}`, createdValue.id)
+
+      optionValueIds.set(
+        `${option.name}\u0000${value}`,
+        createdValue.id,
+      )
     }
   }
 
   const optionNames = input.options.map((option) => option.name)
-  const hasDefault = input.variants.some((variant) => variant.isDefault)
+
+  /*
+   * Aunque el frontend falle y envíe varias variantes como principales,
+   * el backend seleccionará exactamente una.
+   */
+  const requestedDefaultIndex = input.variants.findIndex(
+    (variant) => variant.isDefault,
+  )
+
+  const defaultVariantIndex =
+    requestedDefaultIndex >= 0 ? requestedDefaultIndex : 0
+
   const retainedVariantIds = new Set<string>()
+  const generatedSkus = new Set<string>()
 
   for (const [variantIndex, variant] of input.variants.entries()) {
-    const isDefault = variant.isDefault || (!hasDefault && variantIndex === 0)
-    let savedVariant
+    const isDefault = variantIndex === defaultVariantIndex
 
+    let savedVariant: {
+      id: string
+      sku: string
+    }
+
+    /*
+     * Variante existente:
+     * conserva su SKU y solamente actualiza inventario, precio y estado.
+     */
     if (variant.id) {
       const existing = existingById.get(variant.id)
+
       if (!existing) {
-        throw new HttpError(400, 'Una variante no pertenece a este producto.', 'INVALID_VARIANT_ID')
+        throw new HttpError(
+          400,
+          'Una variante no pertenece a este producto.',
+          'INVALID_VARIANT_ID',
+        )
       }
+
+      if (retainedVariantIds.has(existing.id)) {
+        throw new HttpError(
+          400,
+          'La misma variante fue enviada más de una vez.',
+          'DUPLICATE_VARIANT',
+        )
+      }
+
       savedVariant = await transaction.productVariant.update({
-        where: { id: existing.id },
+        where: {
+          id: existing.id,
+        },
         data: {
           price: variant.price,
           previousPrice: variant.previousPrice,
@@ -55,11 +135,45 @@ export async function writeProductRelations(
         },
       })
     } else {
-      const generatedSku = buildVariantSku(skuBase, variant.values, optionNames)
-      const reusable = existingVariants.find((existing) => existing.sku === generatedSku)
-      savedVariant = reusable
-        ? await transaction.productVariant.update({
-          where: { id: reusable.id },
+      /*
+       * Variante nueva:
+       * el SKU se genera exclusivamente en el backend.
+       */
+      const generatedSku = buildVariantSku(
+        skuBase,
+        variant.values,
+        optionNames,
+      )
+
+      if (generatedSkus.has(generatedSku)) {
+        throw new HttpError(
+          400,
+          'Hay dos variantes con la misma combinación de opciones.',
+          'DUPLICATE_VARIANT_COMBINATION',
+        )
+      }
+
+      generatedSkus.add(generatedSku)
+
+      /*
+       * Si la combinación existía anteriormente pero estaba inactiva,
+       * reutilizamos su identidad y su SKU.
+       */
+      const reusable = existingBySku.get(generatedSku)
+
+      if (reusable) {
+        if (retainedVariantIds.has(reusable.id)) {
+          throw new HttpError(
+            400,
+            'Hay dos variantes con la misma combinación de opciones.',
+            'DUPLICATE_VARIANT_COMBINATION',
+          )
+        }
+
+        savedVariant = await transaction.productVariant.update({
+          where: {
+            id: reusable.id,
+          },
           data: {
             price: variant.price,
             previousPrice: variant.previousPrice,
@@ -68,7 +182,8 @@ export async function writeProductRelations(
             isActive: variant.isActive,
           },
         })
-        : await transaction.productVariant.create({
+      } else {
+        savedVariant = await transaction.productVariant.create({
           data: {
             productId,
             sku: generatedSku,
@@ -79,44 +194,116 @@ export async function writeProductRelations(
             isActive: variant.isActive,
           },
         })
+      }
     }
 
     retainedVariantIds.add(savedVariant.id)
-    const ids = Object.entries(variant.values).map(([name, value]) => optionValueIds.get(`${name}\u0000${value}`))
-    if (ids.some((id) => !id)) {
-      throw new HttpError(400, 'Una variante contiene opciones inválidas.', 'INVALID_VARIANT')
+
+    /*
+     * Cada variante debe seleccionar exactamente un valor
+     * de cada opción declarada.
+     */
+    const variantValueNames = Object.keys(variant.values)
+
+    const hasExactOptionSelection =
+      variantValueNames.length === optionNames.length &&
+      optionNames.every((optionName) => {
+        const selectedValue = variant.values[optionName]
+
+        return (
+          typeof selectedValue === 'string' &&
+          selectedValue.length > 0 &&
+          optionValueIds.has(`${optionName}\u0000${selectedValue}`)
+        )
+      })
+
+    if (!hasExactOptionSelection) {
+      throw new HttpError(
+        400,
+        'Una variante contiene opciones inválidas o incompletas.',
+        'INVALID_VARIANT',
+      )
     }
-    if (ids.length) {
+
+    const selectedOptionValueIds = optionNames.map((optionName) => {
+      const selectedValue = variant.values[optionName]
+
+      return optionValueIds.get(
+        `${optionName}\u0000${selectedValue}`,
+      )!
+    })
+
+    if (selectedOptionValueIds.length > 0) {
       await transaction.variantOptionValue.createMany({
-        data: ids.map((optionValueId) => ({ variantId: savedVariant.id, optionValueId: optionValueId! })),
+        data: selectedOptionValueIds.map((optionValueId) => ({
+          variantId: savedVariant.id,
+          optionValueId,
+        })),
       })
     }
   }
 
+  /*
+   * Las variantes eliminadas desde el formulario no se borran,
+   * porque podrían estar relacionadas con pedidos anteriores.
+   */
   const removedVariantIds = existingVariants
     .filter((variant) => !retainedVariantIds.has(variant.id))
     .map((variant) => variant.id)
-  if (removedVariantIds.length) {
+
+  if (removedVariantIds.length > 0) {
     await transaction.productVariant.updateMany({
-      where: { id: { in: removedVariantIds } },
-      data: { isActive: false, isDefault: false },
+      where: {
+        id: {
+          in: removedVariantIds,
+        },
+      },
+      data: {
+        isActive: false,
+        isDefault: false,
+      },
     })
   }
 
-  await transaction.productImage.deleteMany({ where: { productId } })
-  await transaction.productImage.createMany({
-    data: input.images.map((image, index) => ({
+  /*
+   * Actualización de imágenes.
+   */
+  await transaction.productImage.deleteMany({
+    where: {
       productId,
-      url: image.url,
-      altText: image.altText || input.name,
-      sortOrder: image.sortOrder ?? index,
-    })),
+    },
   })
+
+  if (input.images.length > 0) {
+    await transaction.productImage.createMany({
+      data: input.images.map((image, index) => ({
+        productId,
+        url: image.url,
+        altText: image.altText || input.name,
+        sortOrder: image.sortOrder ?? index,
+      })),
+    })
+  }
 }
 
-export async function readProduct(transaction: Prisma.TransactionClient, productId: string) {
-  const product = await transaction.product.findUnique({ where: { id: productId }, include: productInclude })
-  if (!product) throw new HttpError(404, 'Producto no encontrado.', 'PRODUCT_NOT_FOUND')
+export async function readProduct(
+  transaction: Prisma.TransactionClient,
+  productId: string,
+) {
+  const product = await transaction.product.findUnique({
+    where: {
+      id: productId,
+    },
+    include: productInclude,
+  })
+
+  if (!product) {
+    throw new HttpError(
+      404,
+      'Producto no encontrado.',
+      'PRODUCT_NOT_FOUND',
+    )
+  }
+
   return toProductDto(product)
 }
-
