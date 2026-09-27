@@ -18,14 +18,24 @@ const optionSchema = z.object({
   values: z.array(z.string().trim().min(1).max(80)).min(1).max(30),
 })
 
+// const variantSchema = z.object({
+//   id: z.uuid().optional(),
+//   price: z.number().nonnegative().max(9999999999),
+//   previousPrice: z.number().positive().max(9999999999).nullable().optional(),
+//   stock: z.number().int().nonnegative().max(1000000),
+//   isDefault: z.boolean().default(false),
+//   isActive: z.boolean().default(true),
+//   values: z.record(z.string(), z.string()).default({}),
+// })
+
 const variantSchema = z.object({
   id: z.uuid().optional(),
-  price: z.number().nonnegative().max(9999999999),
-  previousPrice: z.number().positive().max(9999999999).nullable().optional(),
-  stock: z.number().int().nonnegative().max(1000000),
+  price: z.coerce.number().nonnegative(),
+  previousPrice: z.coerce.number().nonnegative().nullable().optional(),
+  stock: z.coerce.number().int().nonnegative(),
   isDefault: z.boolean().default(false),
   isActive: z.boolean().default(true),
-  values: z.record(z.string(), z.string()).default({}),
+  values: z.record(z.string(), z.string()),
 })
 
 export const productInputSchema = z.object({
