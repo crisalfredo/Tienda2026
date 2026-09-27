@@ -1,12 +1,5 @@
 import { z } from 'zod'
 
-const normalizeSkuValue = (value: string) => value
-  .normalize('NFD')
-  .replace(/[\u0300-\u036f]/g, '')
-  .toUpperCase()
-  .replace(/[^A-Z0-9]+/g, '-')
-  .replace(/^-+|-+$/g, '')
-
 const imageSchema = z.object({
   url: z.url().max(2000),
   altText: z.string().trim().max(180).optional().default(''),
@@ -15,99 +8,229 @@ const imageSchema = z.object({
 
 const optionSchema = z.object({
   name: z.string().trim().min(1).max(60),
-  values: z.array(z.string().trim().min(1).max(80)).min(1).max(30),
+  values: z
+    .array(z.string().trim().min(1).max(80))
+    .min(1)
+    .max(30),
 })
-
-// const variantSchema = z.object({
-//   id: z.uuid().optional(),
-//   price: z.number().nonnegative().max(9999999999),
-//   previousPrice: z.number().positive().max(9999999999).nullable().optional(),
-//   stock: z.number().int().nonnegative().max(1000000),
-//   isDefault: z.boolean().default(false),
-//   isActive: z.boolean().default(true),
-//   values: z.record(z.string(), z.string()).default({}),
-// })
 
 const variantSchema = z.object({
+  /*
+   * El ID solamente se envía cuando la variante ya existe.
+   * Las variantes nuevas no tienen ID.
+   */
   id: z.uuid().optional(),
-  price: z.coerce.number().nonnegative(),
-  previousPrice: z.coerce.number().nonnegative().nullable().optional(),
-  stock: z.coerce.number().int().nonnegative(),
+
+  /*
+   * El SKU no se recibe desde el frontend.
+   * Se genera exclusivamente en el backend.
+   */
+  price: z
+    .number()
+    .nonnegative()
+    .max(9999999999),
+
+  previousPrice: z
+    .number()
+    .positive()
+    .max(9999999999)
+    .nullable()
+    .optional(),
+
+  stock: z
+    .number()
+    .int()
+    .nonnegative()
+    .max(1000000),
+
   isDefault: z.boolean().default(false),
   isActive: z.boolean().default(true),
-  values: z.record(z.string(), z.string()),
+
+  values: z
+    .record(z.string(), z.string())
+    .default({}),
 })
 
-export const productInputSchema = z.object({
-  categoryId: z.uuid(),
-  name: z.string().trim().min(2).max(140),
-  slug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(170),
-  shortDescription: z.string().trim().min(10).max(260),
-  description: z.string().trim().min(20).max(10000),
-  badge: z.string().trim().max(40).nullable().optional(),
-  featured: z.boolean().default(false),
-  isActive: z.boolean().default(true),
-  images: z.array(imageSchema).min(1).max(10),
-  options: z.array(optionSchema).max(5).default([]),
-  variants: z.array(variantSchema).min(1).max(300),
-}).superRefine((data, context) => {
-  const optionMap = new Map(data.options.map((option) => [option.name, new Set(option.values)]))
-  const optionNames = data.options.map((option) => option.name)
-  const optionNameSet = new Set(optionNames)
-  const variantIds = new Set<string>()
-  const combinations = new Set<string>()
-  const normalizedSkuCombinations = new Set<string>()
+export const productInputSchema = z
+  .object({
+    categoryId: z.uuid(),
 
-  if (optionNameSet.size !== optionNames.length) {
-    context.addIssue({ code: 'custom', message: 'Los nombres de las opciones no pueden repetirse.', path: ['options'] })
-  }
-  for (const [optionIndex, option] of data.options.entries()) {
-    if (new Set(option.values).size !== option.values.length) {
-      context.addIssue({ code: 'custom', message: `La opción ${option.name} contiene valores repetidos.`, path: ['options', optionIndex, 'values'] })
-    }
-  }
-  if (data.variants.filter((variant) => variant.isDefault).length > 1) {
-    context.addIssue({ code: 'custom', message: 'Solo una variante puede ser la principal.', path: ['variants'] })
-  }
-  if (!optionNames.length && data.variants.length > 1) {
-    context.addIssue({ code: 'custom', message: 'Un producto sin opciones solo puede tener una variante.', path: ['variants'] })
-  }
+    name: z
+      .string()
+      .trim()
+      .min(2)
+      .max(140),
 
-  for (const [index, variant] of data.variants.entries()) {
-    if (variant.id) {
-      if (variantIds.has(variant.id)) {
-        context.addIssue({ code: 'custom', message: 'Una variante no puede enviarse dos veces.', path: ['variants', index, 'id'] })
+    slug: z
+      .string()
+      .trim()
+      .regex(
+        /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+        'El slug contiene caracteres inválidos.',
+      )
+      .max(170),
+
+    shortDescription: z
+      .string()
+      .trim()
+      .min(10)
+      .max(260),
+
+    description: z
+      .string()
+      .trim()
+      .min(20)
+      .max(10000),
+
+    badge: z
+      .string()
+      .trim()
+      .max(40)
+      .nullable()
+      .optional(),
+
+    featured: z.boolean().default(false),
+    isActive: z.boolean().default(true),
+
+    images: z
+      .array(imageSchema)
+      .min(1)
+      .max(10),
+
+    options: z
+      .array(optionSchema)
+      .max(5)
+      .default([]),
+
+    variants: z
+      .array(variantSchema)
+      .min(1)
+      .max(300),
+  })
+  .superRefine((data, context) => {
+    const optionNames = new Set<string>()
+    const optionMap = new Map<string, Set<string>>()
+
+    /*
+     * Validar nombres y valores repetidos en las opciones.
+     */
+    for (const [optionIndex, option] of data.options.entries()) {
+      if (optionNames.has(option.name)) {
+        context.addIssue({
+          code: 'custom',
+          message: `La opción ${option.name} está repetida.`,
+          path: ['options', optionIndex, 'name'],
+        })
       }
-      variantIds.add(variant.id)
-    }
-    for (const [name, value] of Object.entries(variant.values)) {
-      if (!optionMap.get(name)?.has(value)) {
-        context.addIssue({ code: 'custom', message: `La opción ${name}: ${value} no existe.`, path: ['variants', index, 'values'] })
+
+      optionNames.add(option.name)
+
+      const uniqueValues = new Set<string>()
+
+      for (const [valueIndex, value] of option.values.entries()) {
+        if (uniqueValues.has(value)) {
+          context.addIssue({
+            code: 'custom',
+            message: `El valor ${value} está repetido en ${option.name}.`,
+            path: [
+              'options',
+              optionIndex,
+              'values',
+              valueIndex,
+            ],
+          })
+        }
+
+        uniqueValues.add(value)
       }
-    }
-    for (const optionName of optionNames) {
-      if (!variant.values[optionName]) {
-        context.addIssue({ code: 'custom', message: `Selecciona un valor para ${optionName}.`, path: ['variants', index, 'values'] })
-      }
-    }
-    for (const valueName of Object.keys(variant.values)) {
-      if (!optionNameSet.has(valueName)) {
-        context.addIssue({ code: 'custom', message: `La opción ${valueName} no pertenece al producto.`, path: ['variants', index, 'values'] })
-      }
+
+      optionMap.set(option.name, uniqueValues)
     }
 
-    const combination = optionNames.map((name) => `${name}\u0000${variant.values[name] ?? ''}`).join('\u0001') || 'STD'
-    if (combinations.has(combination)) {
-      context.addIssue({ code: 'custom', message: 'Esta combinación de opciones ya está repetida.', path: ['variants', index, 'values'] })
-    }
-    combinations.add(combination)
+    const variantIds = new Set<string>()
+    const variantCombinations = new Set<string>()
 
-    const normalizedCombination = optionNames.map((name) => normalizeSkuValue(variant.values[name] ?? '')).join('-') || 'STD'
-    if (normalizedSkuCombinations.has(normalizedCombination)) {
-      context.addIssue({ code: 'custom', message: 'Dos variantes producirían el mismo SKU después de normalizar sus valores.', path: ['variants', index, 'values'] })
-    }
-    normalizedSkuCombinations.add(normalizedCombination)
-  }
-})
+    for (const [variantIndex, variant] of data.variants.entries()) {
+      /*
+       * Un mismo ID no puede enviarse dos veces.
+       */
+      if (variant.id) {
+        if (variantIds.has(variant.id)) {
+          context.addIssue({
+            code: 'custom',
+            message: 'La misma variante fue enviada más de una vez.',
+            path: ['variants', variantIndex, 'id'],
+          })
+        }
 
-export type ProductInput = z.infer<typeof productInputSchema>
+        variantIds.add(variant.id)
+      }
+
+      /*
+       * Cada variante debe seleccionar un valor de cada opción.
+       */
+      for (const option of data.options) {
+        const selectedValue = variant.values[option.name]
+
+        if (!selectedValue) {
+          context.addIssue({
+            code: 'custom',
+            message: `Selecciona un valor para ${option.name}.`,
+            path: ['variants', variantIndex, 'values'],
+          })
+
+          continue
+        }
+
+        if (!optionMap.get(option.name)?.has(selectedValue)) {
+          context.addIssue({
+            code: 'custom',
+            message:
+              `La opción ${option.name}: ${selectedValue} no existe.`,
+            path: ['variants', variantIndex, 'values'],
+          })
+        }
+      }
+
+      /*
+       * No permitir propiedades que no estén declaradas como opciones.
+       */
+      for (const [name, value] of Object.entries(variant.values)) {
+        if (!optionMap.has(name)) {
+          context.addIssue({
+            code: 'custom',
+            message: `La opción ${name}: ${value} no existe.`,
+            path: ['variants', variantIndex, 'values'],
+          })
+        }
+      }
+
+      /*
+       * Detectar combinaciones repetidas antes de generar el SKU.
+       */
+      const combination =
+        data.options.length > 0
+          ? data.options
+              .map(
+                (option) =>
+                  `${option.name}=${variant.values[option.name] ?? ''}`,
+              )
+              .join('|')
+          : '__DEFAULT_VARIANT__'
+
+      if (variantCombinations.has(combination)) {
+        context.addIssue({
+          code: 'custom',
+          message:
+            'Hay dos variantes con la misma combinación de opciones.',
+          path: ['variants', variantIndex, 'values'],
+        })
+      }
+
+      variantCombinations.add(combination)
+    }
+  })
+
+export type ProductInput = z.infer<
+  typeof productInputSchema
+>
