@@ -265,58 +265,68 @@ export async function writeProductRelations(
     })
   }
 
-/*
- * Actualización de imágenes.
- *
- * Las asociaciones se resuelven en el servidor utilizando
- * nombre y valor. El navegador nunca decide un optionValueId.
- */
-await transaction.productImage.deleteMany({
-  where: {
-    productId,
-  },
-})
+  /*
+   * Actualización de imágenes.
+   */
+  await transaction.productImage.deleteMany({
+    where: {
+      productId,
+    },
+  })
 
-if (input.images.length > 0) {
-  const preparedImages = input.images.map(
-    (image, index) => {
+  if (input.images.length > 0) {
+    const imageData = input.images.map((image, index) => {
       let optionValueId: string | null = null
 
       if (image.option) {
-        const optionKey =
-          `${image.option.name}\u0000${image.option.value}`
-
-        const resolvedOptionValueId =
-          optionValueIds.get(optionKey)
+        const optionKey = `${image.option.name}\u0000${image.option.value}`
+        const resolvedOptionValueId = optionValueIds.get(optionKey)
 
         if (!resolvedOptionValueId) {
           throw new HttpError(
             400,
-            `La imagen ${index + 1} contiene una asociación de opción inválida.`,
+            `La asociación de imagen ${image.option.name}: ${image.option.value} no existe.`,
             'INVALID_IMAGE_OPTION',
           )
         }
 
-        optionValueId =
-          resolvedOptionValueId
+        optionValueId = resolvedOptionValueId
       }
 
       return {
         productId,
         optionValueId,
         url: image.url,
-        altText:
-          image.altText ||
-          input.name,
-        sortOrder:
-          image.sortOrder ??
-          index,
+        altText: image.altText || input.name,
+        sortOrder: image.sortOrder ?? index,
       }
-    },
-  )
+    })
 
-  await transaction.productImage.createMany({
-    data: preparedImages,
+    await transaction.productImage.createMany({
+      data: imageData,
     })
   }
 }
+
+export async function readProduct(
+  transaction: Prisma.TransactionClient,
+  productId: string,
+) {
+  const product = await transaction.product.findUnique({
+    where: {
+      id: productId,
+    },
+    include: productInclude,
+  })
+
+  if (!product) {
+    throw new HttpError(
+      404,
+      'Producto no encontrado.',
+      'PRODUCT_NOT_FOUND',
+    )
+  }
+
+  return toProductDto(product)
+}
+
