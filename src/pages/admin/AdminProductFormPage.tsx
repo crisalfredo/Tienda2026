@@ -38,6 +38,11 @@ interface VariantDraft {
   valuesText: string
 }
 
+interface ImageOptionDraft {
+  name: string
+  value: string
+}
+
 interface ProductFormState {
   categoryId: string
   name: string
@@ -134,6 +139,10 @@ export function AdminProductFormPage() {
     createEmptyVariant(),
   ])
 
+  const [imageOptions, setImageOptions] = useState<
+    Record<string, ImageOptionDraft | null>
+  >({})
+
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -180,6 +189,36 @@ export function AdminProductFormPage() {
 
         const product = productResult.data.product
 
+        const loadedMedia = product.media?.length
+          ? [...product.media].sort(
+              (left, right) => left.sortOrder - right.sortOrder,
+            )
+          : product.images.map((url, index) => ({
+              id: `legacy-${index}`,
+              url,
+              altText: product.name,
+              sortOrder: index,
+              option: null,
+            }))
+
+        const loadedImageUrls = [
+          ...new Set(loadedMedia.map((media) => media.url)),
+        ]
+
+        setImageOptions(
+          Object.fromEntries(
+            loadedMedia.map((media) => [
+              media.url,
+              media.option
+                ? {
+                    name: media.option.name,
+                    value: media.option.value,
+                  }
+                : null,
+            ]),
+          ),
+        )
+
         setForm({
           categoryId: product.categoryId ?? '',
           name: product.name,
@@ -189,7 +228,7 @@ export function AdminProductFormPage() {
           badge: product.badge ?? '',
           featured: product.featured,
           isActive: product.isActive ?? true,
-          imagesText: product.images.join('\n'),
+          imagesText: loadedImageUrls.join('\n'),
           optionsText: (product.options ?? [])
             .map(
               (option) =>
@@ -312,6 +351,43 @@ export function AdminProductFormPage() {
     .map((url) => url.trim())
     .filter(Boolean)
 
+  const parsedOptions = parseOptions(form.optionsText)
+
+  const imageOptionChoices = parsedOptions.flatMap((option) =>
+    option.values.map((value) => ({
+      key: JSON.stringify([option.name, value]),
+      name: option.name,
+      value,
+    })),
+  )
+
+  const getImageOptionKey = (url: string) => {
+    const association = imageOptions[url]
+
+    return association
+      ? JSON.stringify([association.name, association.value])
+      : ''
+  }
+
+  const assignImageOption = (
+    url: string,
+    selectedKey: string,
+  ) => {
+    const selectedOption = imageOptionChoices.find(
+      (choice) => choice.key === selectedKey,
+    )
+
+    setImageOptions((current) => ({
+      ...current,
+      [url]: selectedOption
+        ? {
+            name: selectedOption.name,
+            value: selectedOption.value,
+          }
+        : null,
+    }))
+  }
+
   const addImage = (url: string) => {
     const normalizedUrl = url.trim()
 
@@ -326,6 +402,11 @@ export function AdminProductFormPage() {
 
     setError(null)
 
+    setImageOptions((current) => ({
+      ...current,
+      [normalizedUrl]: current[normalizedUrl] ?? null,
+    }))
+
     update(
       'imagesText',
       [...imageUrls, normalizedUrl].join('\n'),
@@ -333,6 +414,12 @@ export function AdminProductFormPage() {
   }
 
   const removeImage = (url: string) => {
+    setImageOptions((current) => {
+      const next = { ...current }
+      delete next[url]
+      return next
+    })
+
     update(
       'imagesText',
       imageUrls
@@ -349,12 +436,41 @@ export function AdminProductFormPage() {
       return
     }
 
+    const options = parseOptions(form.optionsText)
+    const validImageOptions = new Set(
+      options.flatMap((option) =>
+        option.values.map((value) =>
+          JSON.stringify([option.name, value]),
+        ),
+      ),
+    )
+
+    const invalidImageAssociation = imageUrls.find((url) => {
+      const association = imageOptions[url]
+
+      return (
+        association !== null &&
+        association !== undefined &&
+        !validImageOptions.has(
+          JSON.stringify([
+            association.name,
+            association.value,
+          ]),
+        )
+      )
+    })
+
+    if (invalidImageAssociation) {
+      setError(
+        'Una imagen está asociada a una opción que ya no existe. Revisa la selección de las imágenes.',
+      )
+      return
+    }
+
     setSaving(true)
     setError(null)
 
     try {
-      const options = parseOptions(form.optionsText)
-
       const images = form.imagesText
         .split('\n')
         .map((url) => url.trim())
@@ -363,6 +479,7 @@ export function AdminProductFormPage() {
           url,
           altText: form.name,
           sortOrder: index,
+          option: imageOptions[url] ?? null,
         }))
 
       const payload = {
@@ -569,28 +686,57 @@ export function AdminProductFormPage() {
                 {imageUrls.map((url, index) => (
                   <div
                     key={url}
-                    className="group relative overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100"
+                    className="overflow-hidden rounded-xl border border-zinc-200 bg-white"
                   >
-                    <img
-                      src={url}
-                      alt={`${form.name || 'Producto'} ${index + 1}`}
-                      className="aspect-square w-full object-cover"
-                    />
+                    <div className="group relative bg-zinc-100">
+                      <img
+                        src={url}
+                        alt={`${form.name || 'Producto'} ${index + 1}`}
+                        className="aspect-square w-full object-cover"
+                      />
 
-                    {index === 0 && (
-                      <span className="absolute left-2 top-2 rounded-full bg-violet-700 px-2 py-1 text-[10px] font-extrabold text-white">
-                        PRINCIPAL
-                      </span>
-                    )}
+                      {index === 0 && (
+                        <span className="absolute left-2 top-2 rounded-full bg-violet-700 px-2 py-1 text-[10px] font-extrabold text-white">
+                          PRINCIPAL
+                        </span>
+                      )}
 
-                    <button
-                      type="button"
-                      onClick={() => removeImage(url)}
-                      className="absolute bottom-2 right-2 grid size-9 place-items-center rounded-lg bg-white/95 text-red-600 shadow-sm hover:bg-red-50"
-                      aria-label={`Eliminar imagen ${index + 1}`}
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => removeImage(url)}
+                        className="absolute bottom-2 right-2 grid size-9 place-items-center rounded-lg bg-white/95 text-red-600 shadow-sm hover:bg-red-50"
+                        aria-label={`Eliminar imagen ${index + 1}`}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+
+                    <label className="block p-2 text-[11px] font-bold text-zinc-600">
+                      Asociar imagen
+
+                      <select
+                        className={`${inputClass} mt-1 min-h-9 px-2 py-1 text-xs`}
+                        value={getImageOptionKey(url)}
+                        onChange={(event) =>
+                          assignImageOption(
+                            url,
+                            event.target.value,
+                          )
+                        }
+                        disabled={saving}
+                      >
+                        <option value="">Imagen general</option>
+
+                        {imageOptionChoices.map((choice) => (
+                          <option
+                            key={choice.key}
+                            value={choice.key}
+                          >
+                            {choice.name}: {choice.value}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   </div>
                 ))}
               </div>
@@ -855,5 +1001,7 @@ export function AdminProductFormPage() {
     </>
   )
 }
+
+
 
 

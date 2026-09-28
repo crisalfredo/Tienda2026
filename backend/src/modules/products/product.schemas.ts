@@ -1,30 +1,47 @@
 import { z } from 'zod'
 
+const imageOptionSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  value: z.string().trim().min(1).max(80),
+})
+
 const imageSchema = z.object({
   url: z.url().max(2000),
-  altText: z.string().trim().max(180).optional().default(''),
-  sortOrder: z.number().int().min(0).default(0),
+  altText: z
+    .string()
+    .trim()
+    .max(180)
+    .optional()
+    .default(''),
+  sortOrder: z
+    .number()
+    .int()
+    .min(0)
+    .default(0),
+
+  /*
+   * No aceptamos optionValueId desde el navegador.
+   * El backend resolverá el ID mediante name + value.
+   */
+  option: imageOptionSchema
+    .nullable()
+    .optional()
+    .default(null),
 })
 
 const optionSchema = z.object({
   name: z.string().trim().min(1).max(60),
   values: z
-    .array(z.string().trim().min(1).max(80))
+    .array(
+      z.string().trim().min(1).max(80),
+    )
     .min(1)
     .max(30),
 })
 
 const variantSchema = z.object({
-  /*
-   * El ID solamente se envía cuando la variante ya existe.
-   * Las variantes nuevas no tienen ID.
-   */
   id: z.uuid().optional(),
 
-  /*
-   * El SKU no se recibe desde el frontend.
-   * Se genera exclusivamente en el backend.
-   */
   price: z
     .number()
     .nonnegative()
@@ -109,17 +126,26 @@ export const productInputSchema = z
   })
   .superRefine((data, context) => {
     const optionNames = new Set<string>()
-    const optionMap = new Map<string, Set<string>>()
 
-    /*
-     * Validar nombres y valores repetidos en las opciones.
-     */
-    for (const [optionIndex, option] of data.options.entries()) {
+    const optionMap = new Map<
+      string,
+      Set<string>
+    >()
+
+    for (
+      const [optionIndex, option]
+      of data.options.entries()
+    ) {
       if (optionNames.has(option.name)) {
         context.addIssue({
           code: 'custom',
-          message: `La opción ${option.name} está repetida.`,
-          path: ['options', optionIndex, 'name'],
+          message:
+            `La opción ${option.name} está repetida.`,
+          path: [
+            'options',
+            optionIndex,
+            'name',
+          ],
         })
       }
 
@@ -127,11 +153,15 @@ export const productInputSchema = z
 
       const uniqueValues = new Set<string>()
 
-      for (const [valueIndex, value] of option.values.entries()) {
+      for (
+        const [valueIndex, value]
+        of option.values.entries()
+      ) {
         if (uniqueValues.has(value)) {
           context.addIssue({
             code: 'custom',
-            message: `El valor ${value} está repetido en ${option.name}.`,
+            message:
+              `El valor ${value} está repetido en ${option.name}.`,
             path: [
               'options',
               optionIndex,
@@ -144,70 +174,126 @@ export const productInputSchema = z
         uniqueValues.add(value)
       }
 
-      optionMap.set(option.name, uniqueValues)
+      optionMap.set(
+        option.name,
+        uniqueValues,
+      )
+    }
+
+    /*
+     * Verificar que las asociaciones de imágenes
+     * correspondan a opciones del mismo producto.
+     */
+    for (
+      const [imageIndex, image]
+      of data.images.entries()
+    ) {
+      if (!image.option) {
+        continue
+      }
+
+      const validValues = optionMap.get(
+        image.option.name,
+      )
+
+      if (
+        !validValues?.has(
+          image.option.value,
+        )
+      ) {
+        context.addIssue({
+          code: 'custom',
+          message:
+            `La imagen está relacionada con una opción inexistente: ${image.option.name}=${image.option.value}.`,
+          path: [
+            'images',
+            imageIndex,
+            'option',
+          ],
+        })
+      }
     }
 
     const variantIds = new Set<string>()
-    const variantCombinations = new Set<string>()
+    const variantCombinations =
+      new Set<string>()
 
-    for (const [variantIndex, variant] of data.variants.entries()) {
-      /*
-       * Un mismo ID no puede enviarse dos veces.
-       */
+    for (
+      const [variantIndex, variant]
+      of data.variants.entries()
+    ) {
       if (variant.id) {
         if (variantIds.has(variant.id)) {
           context.addIssue({
             code: 'custom',
-            message: 'La misma variante fue enviada más de una vez.',
-            path: ['variants', variantIndex, 'id'],
+            message:
+              'La misma variante fue enviada más de una vez.',
+            path: [
+              'variants',
+              variantIndex,
+              'id',
+            ],
           })
         }
 
         variantIds.add(variant.id)
       }
 
-      /*
-       * Cada variante debe seleccionar un valor de cada opción.
-       */
       for (const option of data.options) {
-        const selectedValue = variant.values[option.name]
+        const selectedValue =
+          variant.values[option.name]
 
         if (!selectedValue) {
           context.addIssue({
             code: 'custom',
-            message: `Selecciona un valor para ${option.name}.`,
-            path: ['variants', variantIndex, 'values'],
+            message:
+              `Selecciona un valor para ${option.name}.`,
+            path: [
+              'variants',
+              variantIndex,
+              'values',
+            ],
           })
 
           continue
         }
 
-        if (!optionMap.get(option.name)?.has(selectedValue)) {
+        if (
+          !optionMap
+            .get(option.name)
+            ?.has(selectedValue)
+        ) {
           context.addIssue({
             code: 'custom',
             message:
               `La opción ${option.name}: ${selectedValue} no existe.`,
-            path: ['variants', variantIndex, 'values'],
+            path: [
+              'variants',
+              variantIndex,
+              'values',
+            ],
           })
         }
       }
 
-      /*
-       * No permitir propiedades que no estén declaradas como opciones.
-       */
-      for (const [name, value] of Object.entries(variant.values)) {
+      for (
+        const [name, value]
+        of Object.entries(variant.values)
+      ) {
         if (!optionMap.has(name)) {
           context.addIssue({
             code: 'custom',
-            message: `La opción ${name}: ${value} no existe.`,
-            path: ['variants', variantIndex, 'values'],
+            message:
+              `La opción ${name}: ${value} no existe.`,
+            path: [
+              'variants',
+              variantIndex,
+              'values',
+            ],
           })
         }
       }
 
-      /*
-       * Detectar combinaciones repetidas antes de generar el SKU.
-       */
       const combination =
         data.options.length > 0
           ? data.options
@@ -218,16 +304,26 @@ export const productInputSchema = z
               .join('|')
           : '__DEFAULT_VARIANT__'
 
-      if (variantCombinations.has(combination)) {
+      if (
+        variantCombinations.has(
+          combination,
+        )
+      ) {
         context.addIssue({
           code: 'custom',
           message:
             'Hay dos variantes con la misma combinación de opciones.',
-          path: ['variants', variantIndex, 'values'],
+          path: [
+            'variants',
+            variantIndex,
+            'values',
+          ],
         })
       }
 
-      variantCombinations.add(combination)
+      variantCombinations.add(
+        combination,
+      )
     }
   })
 
