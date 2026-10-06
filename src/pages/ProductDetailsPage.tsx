@@ -1,6 +1,8 @@
+
 import {
   ArrowLeft,
   Check,
+  ChevronDown,
   Minus,
   Plus,
   ShieldCheck,
@@ -253,7 +255,7 @@ export function ProductDetailsPage() {
           Volver a la categoría
         </Link>
 
-        <div className="mt-8 grid items-start gap-10 lg:grid-cols-2 lg:gap-16">
+        <div className="mt-8 grid items-start gap-10 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,.92fr)] lg:gap-14 xl:gap-20">
           <div className="min-w-0 lg:sticky lg:top-28">
             <div
               className={
@@ -264,7 +266,7 @@ export function ProductDetailsPage() {
             >
               {hasImageGallery && (
                 <div
-                  className="order-2 flex gap-3 overflow-x-auto pb-1 sm:order-1 sm:max-h-[36rem] sm:flex-col sm:overflow-y-auto sm:overflow-x-hidden"
+                  className="order-1 flex gap-3 overflow-x-auto pb-1 sm:max-h-[36rem] sm:flex-col sm:overflow-y-auto sm:overflow-x-hidden"
                   aria-label="Galería de imágenes"
                 >
                   {allMedia.map((media, index) => {
@@ -307,13 +309,7 @@ export function ProductDetailsPage() {
                 </div>
               )}
 
-              <div
-                className={`aspect-square min-w-0 overflow-hidden rounded-[2rem] border border-zinc-100 bg-white p-4 sm:p-8 ${
-                  hasImageGallery
-                    ? 'order-1 sm:order-2'
-                    : ''
-                }`}
-              >
+              <div className="order-2 aspect-square min-w-0 overflow-hidden rounded-2xl border border-zinc-200 bg-white p-3 sm:p-6">
                 <img
                   src={
                     activeImage ||
@@ -330,17 +326,25 @@ export function ProductDetailsPage() {
             </div>
           </div>
 
-          <div className="min-w-0">
-            <p className="text-xs font-extrabold uppercase tracking-[.12em] text-violet-700">
-              {product.categorySlug}
-            </p>
+          <div className="min-w-0 lg:pt-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs font-extrabold uppercase tracking-[.12em] text-violet-700">
+                {product.categorySlug}
+              </p>
 
-            <h1 className="mt-3 font-display text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">
+              {product.badge && (
+                <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-violet-700">
+                  {product.badge}
+                </span>
+              )}
+            </div>
+
+            <h1 className="mt-3 font-display text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl xl:text-[2.75rem]">
               {product.name}
             </h1>
 
-            <div className="mt-5 flex items-baseline gap-3">
-              <span className="font-display text-3xl font-extrabold">
+            <div className="mt-5 flex flex-wrap items-baseline gap-3">
+              <span className="font-display text-3xl font-extrabold text-violet-700 sm:text-4xl">
                 {formatCurrency(
                   selectedVariant?.price ??
                     product.price,
@@ -360,15 +364,15 @@ export function ProductDetailsPage() {
               )}
             </div>
 
-            <p className="mt-6 whitespace-pre-line text-base leading-7 text-zinc-600">
-              {product.description}
+            <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-600">
+              {product.shortDescription}
             </p>
 
             {(product.options ?? []).map(
               (option) => (
                 <fieldset
                   key={option.name}
-                  className="mt-7"
+                  className="mt-6"
                 >
                   <legend className="font-bold">
                     {option.name}
@@ -415,6 +419,38 @@ export function ProductDetailsPage() {
                 </fieldset>
               ),
             )}
+
+            <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 border-y border-zinc-200 py-4 text-sm">
+              <span
+                className={`inline-flex items-center gap-2 font-bold ${
+                  currentStock > 0
+                    ? 'text-emerald-700'
+                    : 'text-red-700'
+                }`}
+              >
+                <span
+                  className={`size-2 rounded-full ${
+                    currentStock > 0
+                      ? 'bg-emerald-500'
+                      : 'bg-red-500'
+                  }`}
+                  aria-hidden="true"
+                />
+
+                {currentStock > 0
+                  ? `${currentStock} unidades disponibles`
+                  : 'Sin existencias'}
+              </span>
+
+              {selectedVariant?.sku && (
+                <span className="text-zinc-500">
+                  SKU:{' '}
+                  <strong className="font-semibold text-zinc-700">
+                    {selectedVariant.sku}
+                  </strong>
+                </span>
+              )}
+            </div>
 
             {!validSelection && (
               <p
@@ -487,14 +523,31 @@ export function ProductDetailsPage() {
               </button>
             </div>
 
-            <p className="mt-3 text-sm text-zinc-500">
-              {currentStock > 0
-                ? `${currentStock} unidades disponibles`
-                : 'Sin existencias'}
-            </p>
+            <details className="group mt-6 border-y border-zinc-200">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-4 font-bold text-zinc-900 transition hover:text-violet-700 [&::-webkit-details-marker]:hidden">
+                <span>
+                  Descripción
+                  <span className="mt-0.5 block text-xs font-normal text-zinc-500">
+                    Conoce todos los detalles del producto
+                  </span>
+                </span>
 
-            <div className="mt-8 grid gap-3 border-t border-zinc-200 pt-7 sm:grid-cols-2">
-              <div className="flex items-center gap-3 text-sm text-zinc-600">
+                <ChevronDown
+                  size={20}
+                  className="shrink-0 text-zinc-500 transition-transform duration-200 group-open:rotate-180"
+                  aria-hidden="true"
+                />
+              </summary>
+
+              <div className="border-t border-zinc-200 py-5">
+                <p className="whitespace-pre-line text-sm leading-7 text-zinc-600 sm:text-base">
+                  {product.description}
+                </p>
+              </div>
+            </details>
+
+            <div className="mt-6 grid gap-3 rounded-2xl bg-zinc-50 p-4 sm:grid-cols-2">
+              <div className="flex items-center gap-3 text-sm font-medium text-zinc-600">
                 <Truck
                   size={20}
                   className="text-violet-700"
@@ -502,7 +555,7 @@ export function ProductDetailsPage() {
                 Entrega coordinada
               </div>
 
-              <div className="flex items-center gap-3 text-sm text-zinc-600">
+              <div className="flex items-center gap-3 text-sm font-medium text-zinc-600">
                 <ShieldCheck
                   size={20}
                   className="text-violet-700"
@@ -1046,4 +1099,5 @@ export function ProductDetailsPage() {
 //     </>
 //   )
 // }
+
 
