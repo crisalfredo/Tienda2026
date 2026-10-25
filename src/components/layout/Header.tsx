@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
 import { useCatalog } from '../../context/CatalogContext'
+import { SearchOverlay } from './SearchOverlay'
 
 function Logo({ onClick }: { onClick?: () => void }) {
   return (
@@ -40,6 +41,7 @@ function ActiveUnderline({ isActive }: { isActive: boolean }) {
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const { totalItems } = useCart()
   const { categories } = useCatalog()
@@ -131,13 +133,14 @@ export function Header() {
           </nav>
 
           <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-            <Link
-              to="/#productos"
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
               className="grid size-11 place-items-center rounded-full text-zinc-700 transition hover:bg-zinc-100 hover:text-violet-700"
               aria-label="Buscar productos"
             >
               <Search size={20} />
-            </Link>
+            </button>
             <Link
               to="/cuenta"
               className="hidden size-11 place-items-center rounded-full text-zinc-700 transition hover:bg-zinc-100 hover:text-violet-700 sm:grid"
@@ -190,6 +193,16 @@ export function Header() {
           </div>
 
           <div className="flex-1 overflow-y-auto px-3 py-4">
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false)
+                setSearchOpen(true)
+              }}
+              className="mb-4 flex w-full items-center gap-3 rounded-xl border border-zinc-200 px-3 py-3 text-left text-zinc-500 transition hover:border-violet-300"
+            >
+              <Search size={18} /> Buscar productos...
+            </button>
             <p className="px-3 pb-2 text-xs font-bold uppercase tracking-wider text-zinc-400">Explorar</p>
             <NavLink
               to="/"
@@ -240,6 +253,8 @@ export function Header() {
           </div>
         </nav>
       </div>
+
+      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
   )
 }

@@ -55,8 +55,9 @@ export function HomePage() {
                 Ver categorías
               </a>
             </div>
-            <p className="mt-5 text-sm text-zinc-600">
-              Pago al recibir disponible según zona de entrega.
+            <p className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-zinc-600">
+              <ShieldCheck size={16} className="text-violet-700" aria-hidden="true" />
+              Paga al recibir según tu zona de entrega
             </p>
           </div>
 
@@ -71,8 +72,12 @@ export function HomePage() {
               alt="Perfume elegante"
               className="absolute bottom-0 left-0 aspect-square w-[42%] rounded-3xl border-[6px] border-white object-cover shadow-2xl"
             />
-            <div className="absolute left-1 top-4 grid size-24 -rotate-6 place-items-center rounded-full bg-zinc-950 text-center text-xs font-extrabold leading-tight text-white shadow-xl sm:size-28">
-              <span>Hasta<br /><strong className="text-2xl">20%</strong><br />menos</span>
+            <div className="absolute left-1 top-3 grid size-24 -rotate-[8deg] place-items-center rounded-full bg-zinc-950 text-center text-[0.7rem] font-bold uppercase leading-tight tracking-wide text-white shadow-xl ring-4 ring-white/40 sm:size-28">
+              <span className="flex flex-col">
+                <span>Hasta</span>
+                <strong className="font-display text-2xl tracking-tight">20%</strong>
+                <span>menos</span>
+              </span>
             </div>
           </div>
         </div>
@@ -117,17 +122,27 @@ export function HomePage() {
             <Link
               key={category.id}
               to={`/categoria/${category.slug}`}
-              className="group relative min-h-64 overflow-hidden rounded-3xl bg-zinc-900 shadow-lg sm:min-h-80"
+              className="group relative min-h-64 overflow-hidden rounded-[1.5rem] bg-zinc-900 shadow-lg ring-1 ring-zinc-900/5 sm:min-h-80"
             >
               <img
                 src={category.image ?? category.imageUrl}
                 alt={category.name}
-                className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/15 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/25 to-transparent" />
+
+              <span className="absolute right-3 top-3 grid size-9 place-items-center rounded-full bg-white/15 text-white backdrop-blur transition duration-300 group-hover:bg-white group-hover:text-zinc-950 sm:right-4 sm:top-4">
+                <ArrowRight size={17} className="transition-transform duration-300 group-hover:-rotate-45" />
+              </span>
+
               <div className="absolute inset-x-0 bottom-0 p-4 text-white sm:p-6">
-                <h3 className="text-lg font-bold sm:text-2xl">{category.name}</h3>
-                <p className="mt-1 hidden text-sm text-white/75 sm:block">{category.description}</p>
+                {category._count?.products != null && (
+                  <span className="mb-2 inline-flex rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold text-white backdrop-blur">
+                    {category._count.products} productos
+                  </span>
+                )}
+                <h3 className="text-lg font-bold leading-tight sm:text-2xl">{category.name}</h3>
+                <p className="mt-1 hidden text-sm leading-6 text-white/75 sm:block">{category.description}</p>
               </div>
             </Link>
           ))}

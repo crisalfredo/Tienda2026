@@ -1,8 +1,8 @@
 
 import {
-  ArrowLeft,
   Check,
   ChevronDown,
+  ChevronRight,
   Minus,
   Plus,
   ShieldCheck,
@@ -42,6 +42,7 @@ export function ProductDetailsPage() {
   const { slug } = useParams()
   const {
     getProductBySlug,
+    getCategoryBySlug,
     products,
     loading,
   } = useCatalog()
@@ -145,6 +146,24 @@ export function ProductDetailsPage() {
     )
     .slice(0, 4)
 
+  const categoryName =
+    getCategoryBySlug(product.categorySlug)?.name ??
+    product.categorySlug
+
+  const currentPrice =
+    selectedVariant?.price ?? product.price
+  const currentPrevious =
+    selectedVariant?.previousPrice ??
+    product.previousPrice
+  const onSale = Boolean(
+    currentPrevious && currentPrevious > currentPrice,
+  )
+  const discountPct = onSale
+    ? Math.round(
+        (1 - currentPrice / (currentPrevious as number)) * 100,
+      )
+    : 0
+
   const hasConfiguredVariants = Boolean(
     product.variants?.length,
   )
@@ -247,13 +266,25 @@ export function ProductDetailsPage() {
   return (
     <>
       <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-14">
-        <Link
-          to={`/categoria/${product.categorySlug}`}
-          className="inline-flex items-center gap-2 text-sm font-bold text-zinc-500 transition hover:text-violet-700"
+        <nav
+          className="flex flex-wrap items-center gap-1.5 text-sm text-zinc-500"
+          aria-label="Ruta de navegación"
         >
-          <ArrowLeft size={17} />
-          Volver a la categoría
-        </Link>
+          <Link to="/" className="transition hover:text-violet-700">
+            Inicio
+          </Link>
+          <ChevronRight size={14} className="text-zinc-300" aria-hidden="true" />
+          <Link
+            to={`/categoria/${product.categorySlug}`}
+            className="capitalize transition hover:text-violet-700"
+          >
+            {categoryName}
+          </Link>
+          <ChevronRight size={14} className="text-zinc-300" aria-hidden="true" />
+          <span className="max-w-[12rem] truncate font-medium text-zinc-700 sm:max-w-xs">
+            {product.name}
+          </span>
+        </nav>
 
         <div className="mt-8 grid items-start gap-10 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,.92fr)] lg:gap-14 xl:gap-20">
           <div className="min-w-0 lg:sticky lg:top-28">
@@ -327,17 +358,11 @@ export function ProductDetailsPage() {
           </div>
 
           <div className="min-w-0 lg:pt-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xs font-extrabold uppercase tracking-[.12em] text-violet-700">
-                {product.categorySlug}
-              </p>
-
-              {product.badge && (
-                <span className="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-violet-700">
-                  {product.badge}
-                </span>
-              )}
-            </div>
+            {product.badge && (
+              <span className="inline-flex rounded-full bg-violet-50 px-3 py-1 text-xs font-bold text-violet-700">
+                {product.badge}
+              </span>
+            )}
 
             <h1 className="mt-3 font-display text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl xl:text-[2.75rem]">
               {product.name}
@@ -345,22 +370,18 @@ export function ProductDetailsPage() {
 
             <div className="mt-5 flex flex-wrap items-baseline gap-3">
               <span className="font-display text-3xl font-extrabold text-violet-700 sm:text-4xl">
-                {formatCurrency(
-                  selectedVariant?.price ??
-                    product.price,
-                )}
+                {formatCurrency(currentPrice)}
               </span>
 
-              {(selectedVariant?.previousPrice ??
-                product.previousPrice) && (
-                <span className="text-lg text-zinc-400 line-through">
-                  {formatCurrency(
-                    (
-                      selectedVariant?.previousPrice ??
-                      product.previousPrice
-                    )!,
-                  )}
-                </span>
+              {onSale && (
+                <>
+                  <span className="text-lg text-zinc-400 line-through">
+                    {formatCurrency(currentPrevious as number)}
+                  </span>
+                  <span className="rounded-full bg-violet-100 px-2.5 py-1 text-sm font-extrabold text-violet-700">
+                    -{discountPct}%
+                  </span>
+                </>
               )}
             </div>
 
