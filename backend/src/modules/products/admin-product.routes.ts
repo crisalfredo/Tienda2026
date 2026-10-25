@@ -90,4 +90,37 @@ router.delete('/:id', requireCsrf, async (request, response) => {
   response.json({ data: { product } })
 })
 
+/*
+ * Borrado DEFINITIVO (solo SUPERADMIN). A diferencia de archivar, elimina el
+ * producto, sus variantes, opciones e imágenes de la base.
+ *
+ * Se rechaza si alguna variante está referenciada por un pedido, para no
+ * perder el historial ni descuadrar los reportes. En ese caso debe archivarse.
+ */
+router.delete('/:id/permanent', authorize('SUPERADMIN'), requireCsrf, async (request, response) => {
+  const before = await prisma.product.findUnique({
+    where: { id: String(request.params.id) },
+    include: { variants: { select: { id: true } } },
+  })
+  if (!before) throw new HttpError(404, 'Producto no encontrado.', 'PRODUCT_NOT_FOUND')
+
+  const variantIds = before.variants.map((variant) => variant.id)
+  const linkedOrderItems = variantIds.length
+    ? await prisma.orderItem.count({ where: { variantId: { in: variantIds } } })
+    : 0
+
+  if (linkedOrderItems > 0) {
+    throw new HttpError(
+      409,
+      'Este producto tiene pedidos asociados. Archívalo en lugar de eliminarlo para conservar el historial.',
+      'PRODUCT_HAS_ORDERS',
+    )
+  }
+
+  // La eliminación en cascada borra variantes, opciones e imágenes.
+  await prisma.product.delete({ where: { id: before.id } })
+  await audit(request, 'DELETE', 'PRODUCT', before.id, before, undefined)
+  response.json({ data: { product: { id: before.id } } })
+})
+
 export { router as adminProductRouter }

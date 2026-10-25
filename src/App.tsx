@@ -18,6 +18,7 @@ import { AdminOrderDetailsPage } from './pages/admin/AdminOrderDetailsPage'
 import { AdminOrdersPage } from './pages/admin/AdminOrdersPage'
 import { AdminProductFormPage } from './pages/admin/AdminProductFormPage'
 import { AdminProductsPage } from './pages/admin/AdminProductsPage'
+import { AdminReportsPage } from './pages/admin/AdminReportsPage'
 import { AdminSettingsPage } from './pages/admin/AdminSettingsPage'
 import { AdminUsersPage } from './pages/admin/AdminUsersPage'
 
@@ -42,6 +43,7 @@ export default function App() {
           <Route path="productos/:id/editar" element={<AdminProductFormPage />} />
           <Route path="categorias" element={<AdminCategoriesPage />} />
           <Route path="inventario" element={<AdminInventoryPage />} />
+          <Route path="reportes" element={<AdminReportsPage />} />
           <Route path="pedidos" element={<AdminOrdersPage />} />
           <Route path="pedidos/:id" element={<AdminOrderDetailsPage />} />
           <Route path="configuracion" element={<AdminSettingsPage />} />

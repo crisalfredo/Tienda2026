@@ -34,6 +34,120 @@ router.get('/dashboard', async (_request, response) => {
   })
 })
 
+/*
+ * Reporte de ganancias.
+ *
+ * Catálogo: valor del inventario a precio y a costo, y la ganancia potencial
+ * si se vendiera todo el stock. Usa el costo actual de cada variante.
+ *
+ * Ventas realizadas: ganancia estimada de pedidos confirmados en adelante.
+ * Es una ESTIMACIÓN porque el pedido no guarda el costo al momento de la
+ * venta; se usa el costo actual de la variante (el cliente lo advierte).
+ */
+router.get('/reports/profit', async (_request, response) => {
+  const [products, soldItems] = await prisma.$transaction([
+    prisma.product.findMany({
+      where: { isActive: true },
+      include: { category: { select: { slug: true } }, variants: { where: { isActive: true } } },
+      orderBy: { name: 'asc' },
+    }),
+    prisma.orderItem.findMany({
+      where: { order: { status: { in: ['CONFIRMED', 'PREPARING', 'SHIPPED', 'DELIVERED'] } } },
+      select: { quantity: true, lineTotal: true, variant: { select: { costPrice: true } } },
+    }),
+  ])
+
+  let variantsWithCost = 0
+  let variantsMissingCost = 0
+  let inventoryRetailValue = 0
+  let inventoryCostValue = 0
+  let retailValueKnown = 0
+  let potentialProfit = 0
+
+  const rows = products.map((product) => {
+    const primary = product.variants.find((variant) => variant.isDefault) ?? product.variants[0]
+    const price = primary ? Number(primary.price) : 0
+    const costPrice = primary?.costPrice != null ? Number(primary.costPrice) : null
+    const unitProfit = costPrice != null ? price - costPrice : null
+    const margin = unitProfit != null && price > 0 ? unitProfit / price : null
+
+    let stock = 0
+    let rowPotentialProfit = 0
+    let hasMissingCost = false
+
+    for (const variant of product.variants) {
+      const variantPrice = Number(variant.price)
+      const variantStock = variant.stock
+      stock += variantStock
+      inventoryRetailValue += variantPrice * variantStock
+
+      if (variant.costPrice != null) {
+        variantsWithCost += 1
+        const variantCost = Number(variant.costPrice)
+        inventoryCostValue += variantCost * variantStock
+        retailValueKnown += variantPrice * variantStock
+        const variantProfit = (variantPrice - variantCost) * variantStock
+        rowPotentialProfit += variantProfit
+        potentialProfit += variantProfit
+      } else {
+        variantsMissingCost += 1
+        hasMissingCost = true
+      }
+    }
+
+    return {
+      id: product.id,
+      name: product.name,
+      categorySlug: product.category.slug,
+      price,
+      costPrice,
+      unitProfit,
+      margin,
+      stock,
+      potentialProfit: rowPotentialProfit,
+      hasMissingCost,
+    }
+  })
+
+  let realizedRevenue = 0
+  let realizedRevenueCosted = 0
+  let realizedEstimatedCost = 0
+  let realizedItemsMissingCost = 0
+
+  for (const item of soldItems) {
+    const lineTotal = Number(item.lineTotal)
+    realizedRevenue += lineTotal
+    if (item.variant?.costPrice != null) {
+      realizedRevenueCosted += lineTotal
+      realizedEstimatedCost += Number(item.variant.costPrice) * item.quantity
+    } else {
+      realizedItemsMissingCost += 1
+    }
+  }
+
+  const realizedEstimatedProfit = realizedRevenueCosted - realizedEstimatedCost
+
+  response.json({
+    data: {
+      summary: {
+        activeProducts: products.length,
+        variantsWithCost,
+        variantsMissingCost,
+        inventoryRetailValue,
+        inventoryCostValue,
+        potentialProfit,
+        potentialMargin: retailValueKnown > 0 ? potentialProfit / retailValueKnown : null,
+        realizedRevenue,
+        realizedEstimatedCost,
+        realizedEstimatedProfit,
+        realizedMargin: realizedRevenueCosted > 0 ? realizedEstimatedProfit / realizedRevenueCosted : null,
+        realizedItemsMissingCost,
+      },
+      products: rows,
+    },
+  })
+})
+
 router.get('/inventory', async (_request, response) => {
   const variants = await prisma.productVariant.findMany({
     include: { product: true, values: { include: { optionValue: { include: { option: true } } } } },

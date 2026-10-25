@@ -52,6 +52,10 @@ export interface Product {
   variants?: ProductVariant[]
   createdAt?: string
   updatedAt?: string
+  // Resumen admin de la variante principal (nunca llega por rutas públicas).
+  costPrice?: number | null
+  profit?: number | null
+  margin?: number | null
 }
 
 export interface ProductVariant {

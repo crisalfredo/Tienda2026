@@ -1,6 +1,6 @@
 import {
   Boxes, ClipboardList, FolderTree, Gauge, History, LogOut, Menu, PackageSearch,
-  Settings, ShieldCheck, ShoppingBag, Store, Users, X,
+  Settings, ShieldCheck, ShoppingBag, Store, TrendingUp, Users, X,
 } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
@@ -11,6 +11,7 @@ const nav = [
   { to: '/admin/productos', label: 'Productos', icon: ShoppingBag },
   { to: '/admin/categorias', label: 'Categorías', icon: FolderTree },
   { to: '/admin/inventario', label: 'Inventario', icon: Boxes },
+  { to: '/admin/reportes', label: 'Reportes', icon: TrendingUp },
   { to: '/admin/pedidos', label: 'Pedidos', icon: ClipboardList },
   { to: '/admin/configuracion', label: 'Configuración', icon: Settings },
 ]

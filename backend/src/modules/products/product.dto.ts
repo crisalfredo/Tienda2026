@@ -87,15 +87,25 @@ export function toAdminProductDto(product: ProductWithRelations) {
     ]),
   )
 
+  const variants = base.variants.map((variant) => {
+    const costPrice = costByVariantId.get(variant.id) ?? null
+    const profit = costPrice != null ? variant.price - costPrice : null
+    const margin =
+      profit != null && variant.price > 0 ? profit / variant.price : null
+
+    return { ...variant, costPrice, profit, margin }
+  })
+
+  // Resumen a nivel producto, tomando la variante principal (misma que fija
+  // el precio mostrado en listas). Permite columnas de ganancia sin recorrer
+  // variantes en el cliente.
+  const primary = variants.find((variant) => variant.isDefault) ?? variants[0]
+
   return {
     ...base,
-    variants: base.variants.map((variant) => {
-      const costPrice = costByVariantId.get(variant.id) ?? null
-      const profit = costPrice != null ? variant.price - costPrice : null
-      const margin =
-        profit != null && variant.price > 0 ? profit / variant.price : null
-
-      return { ...variant, costPrice, profit, margin }
-    }),
+    costPrice: primary?.costPrice ?? null,
+    profit: primary?.profit ?? null,
+    margin: primary?.margin ?? null,
+    variants,
   }
 }
