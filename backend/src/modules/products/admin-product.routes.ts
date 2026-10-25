@@ -5,7 +5,7 @@ import { authenticate, authorize } from '../../middleware/authenticate.js'
 import { requireCsrf } from '../../middleware/csrf.js'
 import { validate } from '../../middleware/validate.js'
 import { audit } from '../../utils/audit.js'
-import { productInclude, toProductDto } from './product.dto.js'
+import { productInclude, toAdminProductDto } from './product.dto.js'
 import { productInputSchema, type ProductInput } from './product.schemas.js'
 import { readProduct, writeProductRelations } from './product.service.js'
 import { allocateProductIdentity } from './sku.service.js'
@@ -21,13 +21,13 @@ router.get('/', async (request, response) => {
     orderBy: { updatedAt: 'desc' },
     take: 200,
   })
-  response.json({ data: { products: products.map(toProductDto) } })
+  response.json({ data: { products: products.map(toAdminProductDto) } })
 })
 
 router.get('/:id', async (request, response) => {
   const product = await prisma.product.findUnique({ where: { id: String(request.params.id) }, include: productInclude })
   if (!product) throw new HttpError(404, 'Producto no encontrado.', 'PRODUCT_NOT_FOUND')
-  response.json({ data: { product: toProductDto(product) } })
+  response.json({ data: { product: toAdminProductDto(product) } })
 })
 
 router.post('/', requireCsrf, validate(productInputSchema), async (request, response) => {
@@ -78,7 +78,7 @@ router.put('/:id', requireCsrf, validate(productInputSchema), async (request, re
     await writeProductRelations(transaction, before.id, before.skuBase, input)
     return readProduct(transaction, before.id)
   }, { maxWait: 10000, timeout: 30000 })
-  await audit(request, 'UPDATE', 'PRODUCT', product.id, toProductDto(before), product)
+  await audit(request, 'UPDATE', 'PRODUCT', product.id, toAdminProductDto(before), product)
   response.json({ data: { product } })
 })
 

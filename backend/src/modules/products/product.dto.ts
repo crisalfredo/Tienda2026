@@ -69,3 +69,33 @@ export function toProductDto(product: ProductWithRelations) {
     updatedAt: product.updatedAt.toISOString(),
   }
 }
+
+/*
+ * DTO exclusivo del panel admin: extiende el público agregando el precio de
+ * compra (costo) y la ganancia por variante. La ganancia y el margen se
+ * calculan en cada lectura para que nunca queden desfasados respecto al precio.
+ *
+ * IMPORTANTE: nunca usar este DTO en rutas públicas; el costo es información
+ * interna para reportes y auditoría.
+ */
+export function toAdminProductDto(product: ProductWithRelations) {
+  const base = toProductDto(product)
+  const costByVariantId = new Map(
+    product.variants.map((variant) => [
+      variant.id,
+      variant.costPrice != null ? Number(variant.costPrice) : null,
+    ]),
+  )
+
+  return {
+    ...base,
+    variants: base.variants.map((variant) => {
+      const costPrice = costByVariantId.get(variant.id) ?? null
+      const profit = costPrice != null ? variant.price - costPrice : null
+      const margin =
+        profit != null && variant.price > 0 ? profit / variant.price : null
+
+      return { ...variant, costPrice, profit, margin }
+    }),
+  }
+}

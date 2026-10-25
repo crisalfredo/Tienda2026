@@ -1,7 +1,7 @@
 import type { Prisma } from '@prisma/client'
 import { HttpError } from '../../lib/http-error.js'
 import type { ProductInput } from './product.schemas.js'
-import { productInclude, toProductDto } from './product.dto.js'
+import { productInclude, toAdminProductDto } from './product.dto.js'
 import { buildVariantSku } from './sku.service.js'
 
 export async function writeProductRelations(
@@ -129,6 +129,7 @@ export async function writeProductRelations(
         data: {
           price: variant.price,
           previousPrice: variant.previousPrice,
+          costPrice: variant.costPrice ?? null,
           stock: variant.stock,
           isDefault,
           isActive: variant.isActive,
@@ -177,6 +178,7 @@ export async function writeProductRelations(
           data: {
             price: variant.price,
             previousPrice: variant.previousPrice,
+            costPrice: variant.costPrice ?? null,
             stock: variant.stock,
             isDefault,
             isActive: variant.isActive,
@@ -189,6 +191,7 @@ export async function writeProductRelations(
             sku: generatedSku,
             price: variant.price,
             previousPrice: variant.previousPrice,
+            costPrice: variant.costPrice ?? null,
             stock: variant.stock,
             isDefault,
             isActive: variant.isActive,
@@ -327,6 +330,6 @@ export async function readProduct(
     )
   }
 
-  return toProductDto(product)
+  return toAdminProductDto(product)
 }
 

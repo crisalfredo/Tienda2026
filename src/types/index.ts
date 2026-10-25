@@ -63,6 +63,10 @@ export interface ProductVariant {
   isDefault: boolean
   isActive: boolean
   values: SelectedOptions
+  // Campos admin (nunca llegan por rutas públicas).
+  costPrice?: number | null
+  profit?: number | null
+  margin?: number | null
 }
 
 export interface SelectedOptions {

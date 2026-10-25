@@ -59,6 +59,7 @@ const products = [
       'Audífonos inalámbricos pensados para música, estudio y llamadas. Incluyen controles integrados, almohadillas suaves y batería para acompañarte durante el día.',
     price: 19.99,
     previousPrice: 24.99,
+    costPrice: 11.5,
     image:
       'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1200&q=90',
     badge: 'Más vendido',
@@ -79,6 +80,7 @@ const products = [
     description:
       'Audífonos compactos con estuche de carga, micrófono integrado y conexión rápida. Una opción práctica para llamadas y entretenimiento diario.',
     price: 16.5,
+    costPrice: 9,
     image:
       'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=1200&q=90',
     badge: 'Nuevo',
@@ -99,6 +101,7 @@ const products = [
     description:
       'Camisa básica de algodón con caída cómoda y acabado limpio. Combina fácilmente con jeans, pantalones casuales o accesorios urbanos.',
     price: 24.5,
+    costPrice: 14,
     image:
       'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1200&q=90',
     badge: 'Nuevo',
@@ -124,6 +127,7 @@ const products = [
       'Tenis versátiles para caminar y combinar con atuendos casuales. Su diseño limpio permite usarlos durante toda la semana.',
     price: 38,
     previousPrice: 44,
+    costPrice: 22,
     image:
       'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1200&q=90',
     badge: 'Oferta',
@@ -144,6 +148,7 @@ const products = [
     description:
       'Una fragancia versátil con presencia suave y duradera. Ideal para quienes buscan un aroma elegante que funcione tanto de día como de noche.',
     price: 34.99,
+    costPrice: 20,
     image:
       'https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=1200&q=90',
     badge: 'Favorito',
@@ -164,6 +169,7 @@ const products = [
     description:
       'Fragancia fresca de carácter floral, creada para el uso diario. Su presentación compacta es práctica para llevar en el bolso.',
     price: 29.99,
+    costPrice: 17.5,
     image:
       'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=1200&q=90',
     featured: false,
@@ -183,6 +189,7 @@ const products = [
     description:
       'Reloj de estilo minimalista con correa cómoda y una esfera fácil de leer. Una pieza sencilla para completar atuendos casuales o formales.',
     price: 27,
+    costPrice: 15.5,
     image:
       'https://images.unsplash.com/photo-1523275335684-37898b6baf30e?auto=format&fit=crop&w=1200&q=90',
     featured: true,
@@ -202,6 +209,7 @@ const products = [
     description:
       'Lentes de sol livianos y cómodos para acompañarte todos los días. Su forma versátil combina con distintos estilos.',
     price: 18.75,
+    costPrice: 10.5,
     image:
       'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=1200&q=90',
     badge: 'Popular',
@@ -307,6 +315,7 @@ async function main() {
       variants: optionCombinations.map((values, index) => ({
         price: product.price,
         previousPrice: product.previousPrice ?? null,
+        costPrice: product.costPrice ?? null,
         stock: baseStock + (index < remainder ? 1 : 0),
         isDefault: index === 0,
         isActive: true,

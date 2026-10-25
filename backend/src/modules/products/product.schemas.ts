@@ -54,6 +54,15 @@ const variantSchema = z.object({
     .nullable()
     .optional(),
 
+  // Precio de compra (costo). Dato admin para ganancias/auditoría.
+  // Opcional: las variantes existentes pueden no tenerlo.
+  costPrice: z
+    .number()
+    .nonnegative()
+    .max(9999999999)
+    .nullable()
+    .optional(),
+
   stock: z
     .number()
     .int()

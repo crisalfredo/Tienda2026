@@ -25,6 +25,7 @@ import {
   secondaryButton,
 } from '../../components/admin/AdminUi'
 import { adminApi } from '../../services/api'
+import { formatCurrency } from '../../utils/currency'
 import type { Category, Product } from '../../types'
 
 interface VariantDraft {
@@ -32,6 +33,7 @@ interface VariantDraft {
   sku?: string
   price: string
   previousPrice: string
+  costPrice: string
   stock: string
   isDefault: boolean
   isActive: boolean
@@ -60,11 +62,36 @@ function createEmptyVariant(isDefault = true): VariantDraft {
   return {
     price: '',
     previousPrice: '',
+    costPrice: '',
     stock: '0',
     isDefault,
     isActive: true,
     valuesText: '',
   }
+}
+
+/*
+ * Ganancia en vivo a partir de los campos del formulario.
+ * Devuelve null cuando falta el costo o el precio no es válido.
+ */
+function computeMargin(priceText: string, costText: string) {
+  const price = Number(priceText)
+  const trimmedCost = costText.trim()
+
+  if (trimmedCost === '' || !Number.isFinite(price)) {
+    return { profit: null, margin: null }
+  }
+
+  const cost = Number(trimmedCost)
+
+  if (!Number.isFinite(cost)) {
+    return { profit: null, margin: null }
+  }
+
+  const profit = price - cost
+  const margin = price > 0 ? profit / price : null
+
+  return { profit, margin }
 }
 
 function parseOptions(optionsText: string) {
@@ -246,6 +273,11 @@ export function AdminProductFormPage() {
               variant.previousPrice !== undefined &&
               variant.previousPrice !== null
                 ? String(variant.previousPrice)
+                : '',
+            costPrice:
+              variant.costPrice !== undefined &&
+              variant.costPrice !== null
+                ? String(variant.costPrice)
                 : '',
             stock: String(variant.stock),
             isDefault: variant.isDefault,
@@ -510,6 +542,10 @@ export function AdminProductFormPage() {
           previousPrice:
             variant.previousPrice.trim() !== ''
               ? Number(variant.previousPrice)
+              : null,
+          costPrice:
+            variant.costPrice.trim() !== ''
+              ? Number(variant.costPrice)
               : null,
           stock: Number(variant.stock),
           isDefault: variant.isDefault,
@@ -841,6 +877,26 @@ export function AdminProductFormPage() {
                     </label>
 
                     <label className="text-xs font-bold">
+                      Costo (compra)
+
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className={`${inputClass} mt-1`}
+                        value={variant.costPrice}
+                        onChange={(event) =>
+                          updateVariant(
+                            index,
+                            'costPrice',
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Opcional"
+                      />
+                    </label>
+
+                    <label className="text-xs font-bold">
                       Precio anterior
 
                       <input
@@ -895,6 +951,49 @@ export function AdminProductFormPage() {
                         placeholder="Color=Negro, Talla=M"
                       />
                     </label>
+
+                    {(() => {
+                      const { profit, margin } = computeMargin(
+                        variant.price,
+                        variant.costPrice,
+                      )
+
+                      if (profit === null) {
+                        return (
+                          <p className="flex items-center text-xs font-medium text-zinc-400 sm:col-span-2 lg:col-span-4">
+                            Ingresa el costo para calcular la ganancia de esta variante.
+                          </p>
+                        )
+                      }
+
+                      const positive = profit >= 0
+
+                      return (
+                        <div
+                          className={`flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg px-3 py-2 text-xs font-bold sm:col-span-2 lg:col-span-4 ${
+                            positive
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : 'bg-red-50 text-red-700'
+                          }`}
+                        >
+                          <span>
+                            Ganancia: {formatCurrency(profit)}
+                          </span>
+
+                          {margin !== null && (
+                            <span>
+                              Margen: {(margin * 100).toFixed(1)}%
+                            </span>
+                          )}
+
+                          {!positive && (
+                            <span className="font-medium">
+                              El costo supera al precio de venta.
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })()}
 
                     <div className="flex items-end justify-between gap-3">
                       <label className="flex min-h-11 items-center gap-2 text-xs font-bold">
