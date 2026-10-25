@@ -7,3 +7,6 @@ vite.config.d.ts
 backend/.env
 .sites-runtime/
 .DS_Store
+
+# Symlinks locales de skills (ruta absoluta por máquina); los reales viven en .agents/
+.claude/skills/
