@@ -54,22 +54,22 @@ export function ProductCard({ product }: { product: Product }) {
         )}
       </Link>
 
-      <div className="flex flex-1 flex-col px-1 pt-4">
-        <p className="text-xs font-bold uppercase tracking-[.12em] text-violet-700">
+      <div className="flex flex-1 flex-col px-1 pt-3 sm:pt-4">
+        <p className="text-[.65rem] font-bold uppercase tracking-[.12em] text-violet-700 sm:text-xs">
           {product.categorySlug}
         </p>
         <Link to={`/producto/${product.slug}`}>
-          <h3 className="mt-1 line-clamp-2 min-h-14 text-lg font-bold leading-7 tracking-tight transition hover:text-violet-700">
+          <h3 className="mt-1 line-clamp-2 min-h-12 text-base font-bold leading-6 tracking-tight transition hover:text-violet-700 sm:min-h-14 sm:text-lg sm:leading-7">
             {product.name}
           </h3>
         </Link>
-        <p className="mt-1 line-clamp-2 min-h-12 text-sm leading-6 text-zinc-500">
+        <p className="mt-1 line-clamp-2 min-h-10 text-sm leading-5 text-zinc-500 sm:min-h-12 sm:leading-6">
           {product.shortDescription}
         </p>
 
-        <div className="mt-auto flex items-center justify-between gap-3 pt-4">
+        <div className="mt-auto flex items-center justify-between gap-2 pt-4 sm:gap-3">
           <div className="flex items-baseline gap-2">
-            <span className="font-display text-xl font-extrabold">
+            <span className="font-display text-lg font-extrabold sm:text-xl">
               {formatCurrency(product.price)}
             </span>
             {product.previousPrice && (
