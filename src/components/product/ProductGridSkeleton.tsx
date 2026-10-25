@@ -8,11 +8,13 @@ export function ProductGridSkeleton({ count = 4 }: { count?: number }) {
     >
       {Array.from({ length: count }).map((_, index) => (
         <div key={index} className="flex flex-col">
-          <div className="aspect-square rounded-[1.4rem] bg-zinc-200/70 motion-safe:animate-pulse" />
-          <div className={`mt-4 h-3 w-16 ${shimmer}`} />
-          <div className={`mt-3 h-4 w-full ${shimmer}`} />
+          <div className="aspect-square rounded-2xl bg-zinc-200/70 motion-safe:animate-pulse" />
+          <div className={`mt-4 h-4 w-full ${shimmer}`} />
           <div className={`mt-2 h-4 w-2/3 ${shimmer}`} />
-          <div className={`mt-5 h-6 w-24 ${shimmer}`} />
+          <div className="mt-4 flex items-center justify-between">
+            <div className={`h-6 w-20 ${shimmer}`} />
+            <div className={`h-10 w-10 rounded-full ${shimmer}`} />
+          </div>
         </div>
       ))}
     </div>
