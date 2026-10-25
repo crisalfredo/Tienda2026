@@ -13,6 +13,46 @@ function normalize(value: string) {
     .replace(/[̀-ͯ]/g, '')
 }
 
+// Grupos de letras con acento para resaltar sin importar tildes/diéresis.
+const ACCENT_GROUPS = ['aáàäâã', 'eéèëê', 'iíìïî', 'oóòöôõ', 'uúùüû', 'cç', 'nñ']
+
+// Construye un patrón que respeta las posiciones del texto original
+// (no usamos el texto normalizado para no desalinear los índices).
+function accentInsensitivePattern(term: string) {
+  return term
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/[a-zA-Záàäâãéèëêíìïîóòöôõúùüûçñ]/gi, (char) => {
+      const lower = char.toLowerCase()
+      const group = ACCENT_GROUPS.find((chars) => chars.includes(lower))
+      return group ? `[${group}${group.toUpperCase()}]` : char
+    })
+}
+
+function Highlight({ text, term }: { text: string; term: string }) {
+  const trimmed = term.trim()
+  if (trimmed.length < 2) return <>{text}</>
+  try {
+    const regex = new RegExp(`(${accentInsensitivePattern(trimmed)})`, 'i')
+    // split con grupo de captura: los índices impares son coincidencias.
+    const parts = text.split(regex)
+    return (
+      <>
+        {parts.map((part, index) =>
+          index % 2 === 1 ? (
+            <mark key={index} className="rounded bg-violet-100 font-bold text-violet-800">
+              {part}
+            </mark>
+          ) : (
+            part
+          ),
+        )}
+      </>
+    )
+  } catch {
+    return <>{text}</>
+  }
+}
+
 export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { products } = useCatalog()
   const [query, setQuery] = useState('')
@@ -120,7 +160,9 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
                       />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold text-zinc-900">{product.name}</span>
+                      <span className="block truncate font-semibold text-zinc-900">
+                        <Highlight text={product.name} term={query} />
+                      </span>
                       <span className="block truncate text-sm capitalize text-zinc-400">
                         {product.categorySlug}
                       </span>

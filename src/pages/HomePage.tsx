@@ -122,20 +122,21 @@ export function HomePage() {
             <Link
               key={category.id}
               to={`/categoria/${category.slug}`}
-              className="group relative min-h-64 overflow-hidden rounded-[1.5rem] bg-zinc-900 shadow-lg ring-1 ring-zinc-900/5 sm:min-h-80"
+              className="group relative flex aspect-[3/4] flex-col justify-end overflow-hidden rounded-[1.5rem] bg-zinc-900 shadow-lg ring-1 ring-zinc-900/5 transition duration-300 hover:shadow-xl hover:ring-violet-300 sm:aspect-[4/5]"
             >
               <img
                 src={category.image ?? category.imageUrl}
-                alt={category.name}
+                alt=""
+                loading="lazy"
                 className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/25 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/35 to-transparent" />
 
               <span className="absolute right-3 top-3 grid size-9 place-items-center rounded-full bg-white/15 text-white backdrop-blur transition duration-300 group-hover:bg-white group-hover:text-zinc-950 sm:right-4 sm:top-4">
                 <ArrowRight size={17} className="transition-transform duration-300 group-hover:-rotate-45" />
               </span>
 
-              <div className="absolute inset-x-0 bottom-0 p-4 text-white sm:p-6">
+              <div className="relative p-4 text-white sm:p-6">
                 {category._count?.products != null && (
                   <span className="mb-2 inline-flex rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold text-white backdrop-blur">
                     {category._count.products} productos
@@ -143,6 +144,10 @@ export function HomePage() {
                 )}
                 <h3 className="text-lg font-bold leading-tight sm:text-2xl">{category.name}</h3>
                 <p className="mt-1 hidden text-sm leading-6 text-white/75 sm:block">{category.description}</p>
+                <span className="mt-3 hidden translate-y-1 items-center gap-1.5 text-sm font-bold text-white opacity-0 transition duration-300 group-hover:translate-y-0 group-hover:opacity-100 sm:inline-flex">
+                  Ver productos
+                  <ArrowRight size={16} className="transition-transform duration-300 group-hover:translate-x-0.5" />
+                </span>
               </div>
             </Link>
           ))}

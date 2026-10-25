@@ -8,6 +8,7 @@ import {
 import { Link } from 'react-router-dom'
 
 import { useCart } from '../context/CartContext'
+import { useCatalog } from '../context/CatalogContext'
 import { formatCurrency } from '../utils/currency'
 
 export function CartPage() {
@@ -17,6 +18,7 @@ export function CartPage() {
     removeItem,
     updateQuantity,
   } = useCart()
+  const { categories } = useCatalog()
 
   if (items.length === 0) {
     return (
@@ -47,6 +49,23 @@ export function CartPage() {
               aria-hidden="true"
             />
           </Link>
+
+          {categories.length > 0 && (
+            <div className="mt-10 border-t border-zinc-100 pt-7">
+              <p className="text-sm font-semibold text-zinc-500">O empieza por una categoría</p>
+              <div className="mt-4 flex flex-wrap justify-center gap-2.5">
+                {categories.map((category) => (
+                  <Link
+                    key={category.id}
+                    to={`/categoria/${category.slug}`}
+                    className="inline-flex min-h-10 items-center rounded-full border border-zinc-200 bg-white px-4 text-sm font-bold text-zinc-700 transition hover:border-violet-300 hover:text-violet-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-100"
+                  >
+                    {category.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
     )

@@ -1,7 +1,8 @@
-import { ArrowLeft } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import { useMemo, useRef } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ProductGrid } from '../components/product/ProductGrid'
+import { ProductGridSkeleton } from '../components/product/ProductGridSkeleton'
 import { Pagination } from '../components/ui/Pagination'
 import { useCatalog } from '../context/CatalogContext'
 
@@ -15,14 +16,6 @@ export function CategoryPage() {
   // La página vive en la URL (?page=2) para que sobreviva al volver atrás.
   const [searchParams, setSearchParams] = useSearchParams()
   const gridTopRef = useRef<HTMLDivElement>(null)
-  const navigate = useNavigate()
-
-  const goBack = () => {
-    // Si hay historial previo, volvemos ahí (conserva la posición de scroll);
-    // si se entró directo con un link, caemos en las categorías.
-    if (window.history.length > 1) navigate(-1)
-    else navigate('/#categorias')
-  }
 
   const categoryProducts = category ? getProductsByCategory(category.slug) : []
   const pageCount = Math.max(1, Math.ceil(categoryProducts.length / PAGE_SIZE))
@@ -46,7 +39,7 @@ export function CategoryPage() {
     gridTopRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' })
   }
 
-  if (loading) return <section className="mx-auto max-w-4xl px-4 py-24 text-center text-zinc-500">Cargando categoría...</section>
+  if (loading) return <CategorySkeleton />
 
   if (!category) {
     return (
@@ -71,21 +64,17 @@ export function CategoryPage() {
         <img src={category.image ?? category.imageUrl} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover opacity-35" />
         <div className="absolute inset-0 -z-10 bg-gradient-to-r from-zinc-950 via-zinc-950/80 to-violet-950/50" />
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold">
-            <button
-              type="button"
-              onClick={goBack}
-              className="inline-flex items-center gap-2 text-violet-200 transition hover:text-white"
-            >
-              <ArrowLeft size={17} /> Atrás
-            </button>
-            <span className="text-violet-300/40" aria-hidden="true">|</span>
-            <Link to="/#categorias" className="inline-flex items-center gap-2 text-violet-200/80 transition hover:text-white">
-              Todas las categorías
-            </Link>
-          </div>
-          <p className="mt-8 text-xs font-extrabold tracking-[.12em] text-violet-300">CATEGORÍA</p>
-          <h1 className="mt-3 font-display text-4xl font-extrabold tracking-tight sm:text-6xl">{category.name}</h1>
+          <Link
+            to="/#categorias"
+            className="inline-flex items-center gap-1.5 text-sm font-bold text-violet-200 transition hover:text-white"
+          >
+            <ChevronLeft size={17} aria-hidden="true" /> Todas las categorías
+          </Link>
+          <span className="mt-8 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-violet-100 ring-1 ring-white/15 backdrop-blur">
+            <span className="size-1.5 rounded-full bg-violet-300" aria-hidden="true" />
+            Categoría
+          </span>
+          <h1 className="mt-4 font-display text-4xl font-extrabold tracking-tight sm:text-6xl">{category.name}</h1>
           <p className="mt-4 max-w-2xl text-lg text-zinc-300">{category.description}</p>
         </div>
       </section>
@@ -101,5 +90,27 @@ export function CategoryPage() {
         <Pagination page={page} pageCount={pageCount} onPageChange={changePage} />
       </section>
     </>
+  )
+}
+
+function CategorySkeleton() {
+  return (
+    <div className="motion-safe:animate-pulse" aria-hidden="true">
+      <div className="bg-zinc-950">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+          <div className="h-4 w-40 rounded-full bg-white/10" />
+          <div className="mt-8 h-6 w-28 rounded-full bg-white/10" />
+          <div className="mt-4 h-12 w-72 max-w-full rounded-2xl bg-white/10" />
+          <div className="mt-4 h-4 w-96 max-w-full rounded-full bg-white/5" />
+        </div>
+      </div>
+      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+        <div className="mb-9">
+          <div className="h-4 w-48 rounded-full bg-zinc-200" />
+          <div className="mt-3 h-8 w-64 max-w-full rounded-xl bg-zinc-200" />
+        </div>
+        <ProductGridSkeleton />
+      </section>
+    </div>
   )
 }
