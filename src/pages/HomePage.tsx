@@ -1,6 +1,7 @@
-import { ArrowRight, Headphones, MessageCircle, ShieldCheck, Truck } from 'lucide-react'
+import { ArrowRight, MessageCircle, ShieldCheck, Truck } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ProductGrid } from '../components/product/ProductGrid'
+import { ProductGridSkeleton } from '../components/product/ProductGridSkeleton'
 import { useCatalog } from '../context/CatalogContext'
 
 const benefits = [
@@ -30,8 +31,9 @@ export function HomePage() {
       <section className="px-4 pb-8 pt-5 sm:px-6 sm:pt-10 lg:px-8">
         <div className="relative mx-auto grid max-w-7xl items-center gap-10 overflow-hidden rounded-[2rem] bg-[radial-gradient(circle_at_18%_15%,#fff_0%,transparent_30%),linear-gradient(135deg,#f3edff_0%,#dfceff_58%,#c2a2f5_100%)] px-6 py-10 sm:px-10 lg:min-h-[35rem] lg:grid-cols-[1.03fr_.97fr] lg:px-16 lg:py-14">
           <div className="relative z-10">
-            <span className="inline-flex rounded-full border border-violet-200 bg-white/70 px-3 py-2 text-xs font-extrabold tracking-[.1em] text-violet-800">
-              NUEVA EXPERIENCIA DE COMPRA
+            <span className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white/70 px-4 py-2 text-sm font-semibold text-violet-800">
+              <span className="size-2 rounded-full bg-violet-600" aria-hidden="true" />
+              Envíos a todo El Salvador
             </span>
             <h1 className="mt-6 max-w-3xl font-display text-[clamp(2.7rem,7vw,5.4rem)] font-extrabold leading-[.96] tracking-[-.065em]">
               Tu estilo y tecnología, <span className="text-violet-700">en un solo lugar.</span>
@@ -97,11 +99,15 @@ export function HomePage() {
 
       <section id="categorias" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-          <div>
-            <p className="text-xs font-extrabold tracking-[.12em] text-violet-700">ENCUENTRA LO QUE BUSCAS</p>
-            <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight sm:text-5xl">Compra por categoría</h2>
+          <div className="max-w-xl">
+            <h2 className="font-display text-3xl font-extrabold tracking-tight sm:text-5xl">Compra por categoría</h2>
+            <p className="mt-3 text-base leading-7 text-zinc-500">
+              {categories.length > 0
+                ? `Explora nuestras ${categories.length} categorías y encuentra justo lo que buscas.`
+                : 'Explora nuestras categorías y encuentra justo lo que buscas.'}
+            </p>
           </div>
-          <a href="#productos" className="flex items-center gap-2 font-bold text-violet-700">
+          <a href="#productos" className="flex items-center gap-2 font-bold text-violet-700 hover:text-violet-800">
             Ver destacados <ArrowRight size={18} />
           </a>
         </div>
@@ -131,11 +137,13 @@ export function HomePage() {
       <section id="productos" className="bg-white py-16 lg:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-9 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-            <div>
-              <p className="text-xs font-extrabold tracking-[.12em] text-violet-700">SELECCIÓN ESPECIAL</p>
-              <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight sm:text-5xl">Productos destacados</h2>
+            <div className="max-w-xl">
+              <h2 className="font-display text-3xl font-extrabold tracking-tight sm:text-5xl">Productos destacados</h2>
+              <p className="mt-3 text-base leading-7 text-zinc-500">
+                Una selección de lo más buscado, lista para pedir por WhatsApp.
+              </p>
             </div>
-            <Link to="/categoria/tecnologia" className="flex items-center gap-2 font-bold text-violet-700">
+            <Link to="/categoria/tecnologia" className="flex items-center gap-2 font-bold text-violet-700 hover:text-violet-800">
               Explorar catálogo <ArrowRight size={18} />
             </Link>
           </div>
@@ -145,23 +153,25 @@ export function HomePage() {
               <button type="button" onClick={() => void reload()} className="font-bold underline">Reintentar</button>
             </div>
           )}
-          {loading ? <p className="py-10 text-center text-zinc-500">Cargando productos...</p> : <ProductGrid products={featuredProducts} />}
+          {loading ? <ProductGridSkeleton /> : <ProductGrid products={featuredProducts} />}
         </div>
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <div className="flex flex-col items-start justify-between gap-8 rounded-[2rem] bg-gradient-to-br from-zinc-950 via-[#35194f] to-violet-700 px-7 py-10 text-white shadow-2xl sm:px-12 lg:flex-row lg:items-center lg:px-16 lg:py-14">
           <div>
-            <p className="text-xs font-extrabold tracking-[.12em] text-violet-200">COMPRA A TU MANERA</p>
-            <h2 className="mt-3 max-w-3xl font-display text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl">
+            <h2 className="max-w-3xl font-display text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl">
               Elige tus productos y confirma todo por WhatsApp.
             </h2>
+            <p className="mt-4 max-w-xl text-base leading-7 text-violet-100/80">
+              Arma tu carrito, envíanos el pedido y coordinamos la entrega al instante.
+            </p>
           </div>
           <Link
             to="/carrito"
             className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-white px-6 font-bold text-violet-800 transition hover:-translate-y-0.5"
           >
-            Ver mi carrito <Headphones size={18} />
+            Ver mi carrito <ArrowRight size={18} />
           </Link>
         </div>
       </section>

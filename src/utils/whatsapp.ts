@@ -39,6 +39,10 @@ export function buildWhatsAppMessage(
   ].join('\n')
 }
 
+export function buildGeneralHelpMessage() {
+  return 'Hola 👋, estoy en la tienda UrbanoSV y me gustaría recibir ayuda.'
+}
+
 export function buildWhatsAppHelpMessage(items: CartItem[]) {
   const productLines = items.map((item, index) => {
     const options = Object.entries(item.selectedOptions)

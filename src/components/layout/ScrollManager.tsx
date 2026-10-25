@@ -12,6 +12,7 @@ export function ScrollManager() {
   const { pathname, hash, key } = useLocation()
   const navigationType = useNavigationType()
   const positions = useRef<Record<string, number>>({})
+  const lastPathname = useRef<string | null>(null)
 
   // Dejamos que nosotros manejemos la restauración, no el navegador.
   useEffect(() => {
@@ -30,6 +31,9 @@ export function ScrollManager() {
   }, [key])
 
   useEffect(() => {
+    const previousPathname = lastPathname.current
+    lastPathname.current = pathname
+
     if (hash) {
       let frame = 0
       let attempts = 0
@@ -46,12 +50,17 @@ export function ScrollManager() {
       return () => window.cancelAnimationFrame(frame)
     }
 
-    const saved = positions.current[key]
-    if (navigationType === 'POP' && saved != null) {
-      window.scrollTo({ top: saved, behavior: 'auto' })
-    } else {
-      window.scrollTo({ top: 0, behavior: 'auto' })
+    // Volver atrás/adelante: restauramos la posición guardada.
+    if (navigationType === 'POP') {
+      window.scrollTo({ top: positions.current[key] ?? 0, behavior: 'auto' })
+      return
     }
+
+    // Mismo pathname, solo cambió el query (p. ej. ?page=2 en paginación):
+    // no saltamos al tope; la vista maneja su propio scroll.
+    if (previousPathname === pathname) return
+
+    window.scrollTo({ top: 0, behavior: 'auto' })
   }, [pathname, hash, key, navigationType])
 
   return null

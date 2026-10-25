@@ -1,6 +1,6 @@
 import { ArrowLeft } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useMemo, useRef } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ProductGrid } from '../components/product/ProductGrid'
 import { Pagination } from '../components/ui/Pagination'
 import { useCatalog } from '../context/CatalogContext'
@@ -12,23 +12,36 @@ export function CategoryPage() {
   const { getCategoryBySlug, getProductsByCategory, loading } = useCatalog()
   const category = getCategoryBySlug(slug)
 
-  const [page, setPage] = useState(1)
+  // La página vive en la URL (?page=2) para que sobreviva al volver atrás.
+  const [searchParams, setSearchParams] = useSearchParams()
   const gridTopRef = useRef<HTMLDivElement>(null)
+  const navigate = useNavigate()
 
-  // Al cambiar de categoría, volvemos a la primera página.
-  useEffect(() => {
-    setPage(1)
-  }, [slug])
+  const goBack = () => {
+    // Si hay historial previo, volvemos ahí (conserva la posición de scroll);
+    // si se entró directo con un link, caemos en las categorías.
+    if (window.history.length > 1) navigate(-1)
+    else navigate('/#categorias')
+  }
 
   const categoryProducts = category ? getProductsByCategory(category.slug) : []
   const pageCount = Math.max(1, Math.ceil(categoryProducts.length / PAGE_SIZE))
+  const requestedPage = Number(searchParams.get('page')) || 1
+  const page = Math.min(Math.max(requestedPage, 1), pageCount)
   const visibleProducts = useMemo(
     () => categoryProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
     [categoryProducts, page],
   )
 
   const changePage = (next: number) => {
-    setPage(next)
+    setSearchParams(
+      (params) => {
+        if (next <= 1) params.delete('page')
+        else params.set('page', String(next))
+        return params
+      },
+      { replace: false },
+    )
     // Salto instantáneo al inicio de la grilla, sin scroll visible.
     gridTopRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' })
   }
@@ -58,9 +71,19 @@ export function CategoryPage() {
         <img src={category.image ?? category.imageUrl} alt="" className="absolute inset-0 -z-20 h-full w-full object-cover opacity-35" />
         <div className="absolute inset-0 -z-10 bg-gradient-to-r from-zinc-950 via-zinc-950/80 to-violet-950/50" />
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-          <Link to="/#categorias" className="inline-flex items-center gap-2 text-sm font-bold text-violet-200 hover:text-white">
-            <ArrowLeft size={17} /> Volver a categorías
-          </Link>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold">
+            <button
+              type="button"
+              onClick={goBack}
+              className="inline-flex items-center gap-2 text-violet-200 transition hover:text-white"
+            >
+              <ArrowLeft size={17} /> Atrás
+            </button>
+            <span className="text-violet-300/40" aria-hidden="true">|</span>
+            <Link to="/#categorias" className="inline-flex items-center gap-2 text-violet-200/80 transition hover:text-white">
+              Todas las categorías
+            </Link>
+          </div>
           <p className="mt-8 text-xs font-extrabold tracking-[.12em] text-violet-300">CATEGORÍA</p>
           <h1 className="mt-3 font-display text-4xl font-extrabold tracking-tight sm:text-6xl">{category.name}</h1>
           <p className="mt-4 max-w-2xl text-lg text-zinc-300">{category.description}</p>
